@@ -72,14 +72,14 @@ import static org.elasticsearch.cli.Terminal.Verbosity.VERBOSE;
 
 /**
  * A command for the plugin cli to install a plugin into elasticsearch.
- *
+ * <p>
  * The install command takes a plugin id, which may be any of the following:
  * <ul>
  * <li>An official elasticsearch plugin name</li>
  * <li>Maven coordinates to a plugin zip</li>
  * <li>A URL to a plugin zip</li>
  * </ul>
- *
+ * <p>
  * Plugins are packaged as zip files. Each packaged plugin must contain a
  * plugin properties file. See {@link PluginInfo}.
  * <p>
@@ -104,11 +104,14 @@ class InstallPluginCommand extends SettingCommand {
 
     private static final String PROPERTY_STAGING_ID = "es.plugins.staging";
 
-    /** The builtin modules, which are plugins, but cannot be installed or removed. */
+    /**
+     * The builtin modules, which are plugins, but cannot be installed or removed.
+     */
     static final Set<String> MODULES;
+
     static {
         try (InputStream stream = InstallPluginCommand.class.getResourceAsStream("/modules.txt");
-            BufferedReader reader = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8))) {
+             BufferedReader reader = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8))) {
             Set<String> modules = new HashSet<>();
             String line = reader.readLine();
             while (line != null) {
@@ -121,11 +124,14 @@ class InstallPluginCommand extends SettingCommand {
         }
     }
 
-    /** The official plugins that can be installed simply by name. */
+    /**
+     * The official plugins that can be installed simply by name.
+     */
     static final Set<String> OFFICIAL_PLUGINS;
+
     static {
         try (InputStream stream = InstallPluginCommand.class.getResourceAsStream("/plugins.txt");
-            BufferedReader reader = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8))) {
+             BufferedReader reader = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8))) {
             Set<String> plugins = new TreeSet<>(); // use tree set to get sorting for help command
             String line = reader.readLine();
             while (line != null) {
@@ -170,7 +176,7 @@ class InstallPluginCommand extends SettingCommand {
     InstallPluginCommand() {
         super("Install a plugin");
         this.batchOption = parser.acceptsAll(Arrays.asList("b", "batch"),
-                "Enable batch mode explicitly, automatic confirmation of security permission");
+            "Enable batch mode explicitly, automatic confirmation of security permission");
         this.arguments = parser.nonOptions("plugin id");
     }
 
@@ -186,6 +192,9 @@ class InstallPluginCommand extends SettingCommand {
     @Override
     protected void execute(Terminal terminal, OptionSet options, Map<String, String> settings) throws Exception {
         String pluginId = arguments.value(options);
+        terminal.println("options >> " + options.toString());
+        arguments.options().forEach(terminal::println);
+        terminal.println("pluginId >> " + pluginId);
         boolean isBatch = options.has(batchOption) || System.console() == null;
         execute(terminal, pluginId, isBatch, settings);
     }
@@ -207,7 +216,9 @@ class InstallPluginCommand extends SettingCommand {
         install(terminal, isBatch, extractedZip, env);
     }
 
-    /** Downloads the plugin and returns the file it was downloaded to. */
+    /**
+     * Downloads the plugin and returns the file it was downloaded to.
+     */
     private Path download(Terminal terminal, String pluginId, Path tmpDir) throws Exception {
         if (OFFICIAL_PLUGINS.contains(pluginId)) {
             final String version = Version.CURRENT.toString();
@@ -230,7 +241,7 @@ class InstallPluginCommand extends SettingCommand {
         String[] coordinates = pluginId.split(":");
         if (coordinates.length == 3 && pluginId.contains("/") == false) {
             String mavenUrl = String.format(Locale.ROOT, "https://repo1.maven.org/maven2/%1$s/%2$s/%3$s/%2$s-%3$s.zip",
-                    coordinates[0].replace(".", "/") /* groupId */, coordinates[1] /* artifactId */, coordinates[2] /* version */);
+                coordinates[0].replace(".", "/") /* groupId */, coordinates[1] /* artifactId */, coordinates[2] /* version */);
             terminal.println("-> Downloading " + pluginId + " from maven central");
             return downloadZipAndChecksum(terminal, mavenUrl, tmpDir);
         }
@@ -241,7 +252,7 @@ class InstallPluginCommand extends SettingCommand {
             List<String> plugins = checkMisspelledPlugin(pluginId);
             String msg = "Unknown plugin " + pluginId;
             if (plugins.isEmpty() == false) {
-                msg += ", did you mean " + (plugins.size() == 1 ? "[" + plugins.get(0) + "]": "any of " + plugins.toString()) + "?";
+                msg += ", did you mean " + (plugins.size() == 1 ? "[" + plugins.get(0) + "]" : "any of " + plugins.toString()) + "?";
             }
             throw new UserException(ExitCodes.USAGE, msg);
         }
@@ -249,7 +260,9 @@ class InstallPluginCommand extends SettingCommand {
         return downloadZip(terminal, pluginId, tmpDir);
     }
 
-    /** Returns all the official plugin names that look similar to pluginId. **/
+    /**
+     * Returns all the official plugin names that look similar to pluginId.
+     **/
     private List<String> checkMisspelledPlugin(String pluginId) {
         LevensteinDistance ld = new LevensteinDistance();
         List<Tuple<Float, String>> scoredKeys = new ArrayList<>();
@@ -263,7 +276,9 @@ class InstallPluginCommand extends SettingCommand {
         return scoredKeys.stream().map((a) -> a.v2()).collect(Collectors.toList());
     }
 
-    /** Downloads a zip from the url, into a temp file under the given temp dir. */
+    /**
+     * Downloads a zip from the url, into a temp file under the given temp dir.
+     */
     private Path downloadZip(Terminal terminal, String urlString, Path tmpDir) throws IOException {
         terminal.println(VERBOSE, "Retrieving zip from " + urlString);
         URL url = new URL(urlString);
@@ -311,7 +326,9 @@ class InstallPluginCommand extends SettingCommand {
         }
     }
 
-    /** Downloads a zip from the url, as well as a SHA1 checksum, and checks the checksum. */
+    /**
+     * Downloads a zip from the url, as well as a SHA1 checksum, and checks the checksum.
+     */
     private Path downloadZipAndChecksum(Terminal terminal, String urlString, Path tmpDir) throws Exception {
         Path zip = downloadZip(terminal, urlString, tmpDir);
 
@@ -409,7 +426,9 @@ class InstallPluginCommand extends SettingCommand {
         return Files.createTempDirectory(pluginsDir, ".installing-");
     }
 
-    /** Load information about the plugin, and verify it can be installed with no errors. */
+    /**
+     * Load information about the plugin, and verify it can be installed with no errors.
+     */
     private PluginInfo verify(Terminal terminal, Path pluginRoot, boolean isBatch, Environment env) throws Exception {
         // read and validate the plugin descriptor
         PluginInfo info = PluginInfo.readFromProperties(pluginRoot);
@@ -419,7 +438,7 @@ class InstallPluginCommand extends SettingCommand {
         // they might be unavoidably in maven central and are packaged up the same way)
         if (MODULES.contains(info.getName())) {
             throw new UserException(
-                    ExitCodes.USAGE, "plugin '" + info.getName() + "' cannot be installed like this, it is a system module");
+                ExitCodes.USAGE, "plugin '" + info.getName() + "' cannot be installed like this, it is a system module");
         }
 
         // check for jar hell before any copying
@@ -435,7 +454,9 @@ class InstallPluginCommand extends SettingCommand {
         return info;
     }
 
-    /** check a candidate plugin for jar hell before installing it */
+    /**
+     * check a candidate plugin for jar hell before installing it
+     */
     void jarHellCheck(Path candidate, Path pluginsDir) throws Exception {
         // create list of current jars in classpath
         final List<URL> jars = new ArrayList<>();
@@ -511,7 +532,9 @@ class InstallPluginCommand extends SettingCommand {
         }
     }
 
-    /** Copies the files from {@code tmpBinDir} into {@code destBinDir}, along with permissions from dest dirs parent. */
+    /**
+     * Copies the files from {@code tmpBinDir} into {@code destBinDir}, along with permissions from dest dirs parent.
+     */
     private void installBin(PluginInfo info, Path tmpBinDir, Path destBinDir) throws Exception {
         if (Files.isDirectory(tmpBinDir) == false) {
             throw new UserException(ExitCodes.IO_ERROR, "bin in plugin " + info.getName() + " is not a directory");
